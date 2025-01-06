@@ -169,11 +169,6 @@ public class Bech32 {
         // Convert String -> [UInt8] (UTF-8)
         let strBytes = Array(str.utf8)
 
-        // 1) length checks
-        if strBytes.count > 90 {
-            throw DecodingError.stringLengthExceeded
-        }
-
         // 2) check for mixed-case or non-printable
         var lowerFound = false
         var upperFound = false

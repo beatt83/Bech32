@@ -9,19 +9,17 @@
 //  https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki
 //  Inspired by Pieter Wuille C++ implementation
 
-import Foundation
-
 /// Segregated Witness Address encoder/decoder
 public class SegwitAddrCoder {
     private let bech32 = Bech32()
     
     /// Convert from one power-of-2 number base to another
-    private func convertBits(from: Int, to: Int, pad: Bool, idata: Data) throws -> Data {
+    private func convertBits(from: Int, to: Int, pad: Bool, idata: [UInt8]) throws -> [UInt8] {
         var acc: Int = 0
         var bits: Int = 0
         let maxv: Int = (1 << to) - 1
         let maxAcc: Int = (1 << (from + to - 1)) - 1
-        var odata = Data()
+        var odata = [UInt8]()
         for ibyte in idata {
             acc = ((acc << from) | Int(ibyte)) & maxAcc
             bits += from
@@ -41,7 +39,7 @@ public class SegwitAddrCoder {
     }
     
     /// Decode segwit address
-    public func decode(hrp: String, addr: String) throws -> (version: Int, program: Data) {
+    public func decode(hrp: String, addr: String) throws -> (version: Int, program: [UInt8]) {
         let dec = try bech32.decode(addr)
         guard dec.hrp == hrp else {
             throw CoderError.hrpMismatch(dec.hrp, hrp)
@@ -49,7 +47,7 @@ public class SegwitAddrCoder {
         guard dec.checksum.count >= 1 else {
             throw CoderError.checksumSizeTooLow
         }
-        let conv = try convertBits(from: 5, to: 8, pad: false, idata: dec.checksum.advanced(by: 1))
+        let conv = try convertBits(from: 5, to: 8, pad: false, idata: Array(dec.checksum.dropFirst(1)))
         guard conv.count >= 2 && conv.count <= 40 else {
             throw CoderError.dataSizeMismatch(conv.count)
         }
@@ -63,9 +61,9 @@ public class SegwitAddrCoder {
     }
     
     /// Encode segwit address
-    public func encode(hrp: String, version: Int, program: Data) throws -> String {
-        var enc = Data([UInt8(version)])
-        enc.append(try convertBits(from: 8, to: 5, pad: true, idata: program))
+    public func encode(hrp: String, version: Int, program: [UInt8]) throws -> String {
+        var enc = [UInt8(version)]
+        enc.append(contentsOf: try convertBits(from: 8, to: 5, pad: true, idata: program))
         let result = bech32.encode(hrp, values: enc)
         guard let _ = try? decode(hrp: hrp, addr: result) else {
             throw CoderError.encodingCheckFailed
@@ -75,7 +73,7 @@ public class SegwitAddrCoder {
 }
 
 extension SegwitAddrCoder {
-    public enum CoderError: LocalizedError {
+    public enum CoderError: Error {
         case bitsConversionFailed
         case hrpMismatch(String, String)
         case checksumSizeTooLow

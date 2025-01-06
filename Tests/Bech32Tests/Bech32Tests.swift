@@ -16,7 +16,7 @@ fileprivate typealias InvalidChecksum = (bech32: String, error: Bech32.DecodingE
 fileprivate typealias ValidAddressData = (address: String, script: [UInt8])
 fileprivate typealias InvalidAddressData = (hrp: String, version: Int, programLen: Int)
 
-fileprivate extension Data {
+fileprivate extension [UInt8] {
     var hex: String {
         return self.map { String(format: "%02hhx", $0) }.joined()
     }
@@ -133,7 +133,7 @@ class Bech32Tests: XCTestCase {
     func testValidAddress() {
         for valid in _validAddressData {
             let address = valid.address
-            let script = Data(valid.script)
+            let script = valid.script
             var hrp = "bc"
             
             var decoded = try? addrCoder.decode(hrp: hrp, addr: address)
@@ -181,7 +181,7 @@ class Bech32Tests: XCTestCase {
     func testInvalidAddressEncoding() {
         for invalid in _invalidAddressData {
             do {
-                let zeroData = Data(repeating: 0x00, count: invalid.programLen)
+                let zeroData = [UInt8](repeating: 0x00, count: invalid.programLen)
                 let wtf = try addrCoder.encode(hrp: invalid.hrp, version: invalid.version, program: zeroData)
                 XCTFail("Successfully encoded zero bytes data \(wtf)")
             } catch {
@@ -205,11 +205,11 @@ class Bech32Tests: XCTestCase {
         }
     }
     
-    private func segwitPubKey(version: Int, program: Data) -> Data {
-        var result = Data()
+    private func segwitPubKey(version: Int, program: [UInt8]) -> [UInt8] {
+        var result = [UInt8]()
         result.append(version != 0 ? (0x80 | UInt8(version)) : 0x00)
         result.append(UInt8(program.count))
-        result.append(program)
+        result.append(contentsOf: program)
         return result
     }
     
